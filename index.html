@@ -1,98 +1,16 @@
-<style>
-body {
-  background: #000;
-  color: white;
-  text-align: center;
-  font-family: Arial;
-}
-
-.machine {
-  border: 3px solid gold;
-  border-radius: 15px;
-  padding: 10px;
-  display: inline-block;
-  background: #111;
-}
-
-.slot {
-  display: grid;
-  grid-template-columns: repeat(5, 60px);
-  gap: 6px;
-  margin: 10px;
-  position: relative;
-}
-
-.reel {
-  width: 60px;
-  height: 150px;
-  overflow: hidden;
-  border: 2px solid #38bdf8;
-  border-radius: 8px;
-}
-
-.symbol {
-  height: 50px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 22px;
-}
-
-.explode {
-  animation: explode 0.4s forwards;
-}
-@keyframes explode {
-  to { transform: scale(0); opacity: 0; }
-}
-
-.drop {
-  animation: drop 0.5s ease-out;
-}
-@keyframes drop {
-  from { transform: translateY(-120px); opacity: 0.3; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.particle {
-  position: absolute;
-  font-size: 12px;
-  pointer-events: none;
-  animation: particle 0.6s forwards;
-}
-@keyframes particle {
-  to {
-    transform: translate(var(--x), var(--y));
-    opacity: 0;
-  }
-}
-
-.scatter { color: gold; }
-.wild { color: cyan; }
-</style>
-
-<div class="machine">
-  <h3>🎰 SLOT FIXED</h3>
-  <p>💰 <span id="coin">100</span> | 🎁 <span id="free">0</span></p>
-
-  <div class="slot" id="slot"></div>
-
-  <button onclick="doSpin()">SPIN</button>
-  <p id="hasil"></p>
-</div>
-
 <script>
 const slot = document.getElementById("slot");
 
-let coin=100;
-let freeSpin=0;
-let spinCount=0;
+let coin = 100;
+let freeSpin = 0;
+let spinCount = 0;
 
-const reels=[];
-const symbols=["🐶","🐱","🐭","🐹","🐰","🦊","🐻"];
-const WILD="💎";
-const SCATTER="👑";
+const reels = [];
+const symbols = ["🐶","🐱","🐭","🐹","🐰","🦊","🐻"];
+const WILD = "💎";
+const SCATTER = "👑";
 
-const paylines=[
+const paylines = [
   [0,0,0,0,0],
   [1,1,1,1,1],
   [2,2,2,2,2],
@@ -100,7 +18,7 @@ const paylines=[
   [2,1,0,1,2]
 ];
 
-// buat reel
+// build reels
 for(let i=0;i<5;i++){
   const r=document.createElement("div");
   r.className="reel";
@@ -108,18 +26,18 @@ for(let i=0;i<5;i++){
   reels.push(r);
 }
 
-// random
+// random symbol system
 function rand(){
-  const r=Math.random();
+  let r = Math.random();
 
-  if(spinCount!==0 && spinCount%30===0 && r<0.1) return SCATTER;
-  if(r<0.15) return WILD;
+  if(r < 0.08) return WILD;
+  if(r < 0.10 && spinCount % 25 === 0) return SCATTER;
 
   return symbols[Math.floor(Math.random()*symbols.length)];
 }
 
 // grid
-let grid=[];
+let grid = [];
 for(let i=0;i<5;i++){
   grid[i]=[rand(),rand(),rand()];
 }
@@ -131,10 +49,6 @@ function render(){
     grid[i].forEach(s=>{
       const d=document.createElement("div");
       d.className="symbol";
-
-      if(s===SCATTER)d.classList.add("scatter");
-      if(s===WILD)d.classList.add("wild");
-
       d.textContent=s;
       r.appendChild(d);
     });
@@ -142,123 +56,9 @@ function render(){
 }
 render();
 
-// particle
-function explodeEffect(x,y){
-  for(let i=0;i<6;i++){
-    const p=document.createElement("div");
-    p.className="particle";
-    p.textContent="✨";
-
-    p.style.left = x + "px";
-    p.style.top = y + "px";
-
-    p.style.setProperty("--x",(Math.random()*80-40)+"px");
-    p.style.setProperty("--y",(Math.random()*80-40)+"px");
-
-    slot.appendChild(p);
-    setTimeout(()=>p.remove(),600);
-  }
-}
-
-// cascade
-async function cascade(remove){
-
-  remove.forEach(p=>{
-    const el=reels[p.col].children[p.row];
-
-    const rect=el.getBoundingClientRect();
-    const parent=slot.getBoundingClientRect();
-
-    explodeEffect(rect.left-parent.left, rect.top-parent.top);
-
-    el.classList.add("explode");
-  });
-
-  await new Promise(r=>setTimeout(r,400));
-
-  remove.forEach(p=>{
-    grid[p.col].splice(p.row,1);
-  });
-
-  for(let c=0;c<5;c++){
-    while(grid[c].length<3){
-      grid[c].unshift(rand());
-    }
-  }
-
-  render();
-
-  reels.forEach(r=>{
-    [...r.children].forEach(el=>{
-      el.classList.add("drop");
-      setTimeout(()=>el.classList.remove("drop"),500);
-    });
-  });
-
-  await new Promise(r=>setTimeout(r,400));
-}
-
-// check
-async function check(){
-
-  let win=false;
-
-  for(const line of paylines){
-
-    let first=null;
-    let count=0;
-    let remove=[];
-
-    for(let col=0; col<5; col++){
-      let s=grid[col][line[col]];
-      if(s!==WILD){
-        first=s;
-        break;
-      }
-    }
-
-    if(!first){
-      for(let col=0; col<5; col++){
-        count++;
-        remove.push({col,row:line[col]});
-      }
-    } else {
-      for(let col=0; col<5; col++){
-        let s=grid[col][line[col]];
-        if(s===first || s===WILD){
-          count++;
-          remove.push({col,row:line[col]});
-        } else break;
-      }
-    }
-
-    if(count>=3){
-      win=true;
-
-      coin += count * 5;
-      document.getElementById("coin").textContent=coin;
-
-      await cascade(remove.slice(0,count));
-    }
-  }
-
-  return win;
-}
-
-// spin
-async function doSpin(){
-
-  spinCount++;
-
-  if(coin<10) return;
-  coin-=10;
-
-  document.getElementById("coin").textContent=coin;
-  document.getElementById("hasil").textContent="⏳";
-
-  let speed=50, i=0;
-
-  function anim(){
+// SPIN ANIMATION PRO
+async function spinAnimation(){
+  for(let i=0;i<18;i++){
     reels.forEach(r=>{
       r.innerHTML="";
       for(let j=0;j<3;j++){
@@ -269,24 +69,83 @@ async function doSpin(){
       }
     });
 
-    i++;
-    speed+=10;
+    await new Promise(res=>setTimeout(res,60+i*5));
+  }
+}
 
-    if(i<15) setTimeout(anim,speed);
-    else{
-      for(let c=0;c<5;c++){
-        grid[c]=[rand(),rand(),rand()];
+// EXPLOSION EFFECT
+function explode(el){
+  el.style.transition="0.2s";
+  el.style.transform="scale(1.6) rotate(10deg)";
+  setTimeout(()=>{
+    el.style.transform="scale(1)";
+  },200);
+}
+
+// CHECK WIN
+function checkWin(){
+  let win=false;
+
+  paylines.forEach(line=>{
+    let first=null;
+    let count=0;
+
+    for(let i=0;i<5;i++){
+      let s=grid[i][line[i]];
+
+      if(s===WILD || first===null){
+        first = first || s;
+        count++;
+      } else if(s===first){
+        count++;
+      } else break;
+    }
+
+    if(count>=3){
+      win=true;
+
+      for(let i=0;i<count;i++){
+        explode(reels[i].children[line[i]]);
       }
 
-      render();
-
-      check().then(win=>{
-        document.getElementById("hasil").textContent=
-          win?"💥 MENANG":"😢";
-      });
+      coin += count * 10;
     }
+  });
+
+  document.getElementById("coin").textContent=coin;
+  document.getElementById("hasil").textContent = win ? "💥 BIG WIN!" : "😢 LOST";
+}
+
+// MAIN SPIN
+async function doSpin(){
+
+  if(coin < 10 && freeSpin === 0) return;
+
+  if(freeSpin > 0){
+    freeSpin--;
+  } else {
+    coin -= 10;
   }
 
-  anim();
+  document.getElementById("coin").textContent=coin;
+  document.getElementById("free").textContent=freeSpin;
+
+  document.getElementById("hasil").textContent="⏳ SPINNING...";
+
+  await spinAnimation();
+
+  for(let c=0;c<5;c++){
+    grid[c]=[rand(),rand(),rand()];
+  }
+
+  render();
+  checkWin();
+
+  // SCATTER BONUS
+  let scatterCount = grid.flat().filter(x=>x===SCATTER).length;
+  if(scatterCount >= 3){
+    freeSpin += 15;
+    document.getElementById("hasil").textContent="🎁 FREE SPINS!";
+  }
 }
 </script>
